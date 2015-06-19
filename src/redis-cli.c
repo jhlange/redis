@@ -63,6 +63,7 @@
 #define REDIS_CLI_DEFAULT_PIPE_TIMEOUT 30 /* seconds */
 #define REDIS_CLI_HISTFILE_ENV "REDISCLI_HISTFILE"
 #define REDIS_CLI_HISTFILE_DEFAULT ".rediscli_history"
+#define REDIS_CONFIGLINE_MAX 1024
 
 /* --latency-dist palettes. */
 int spectrum_palette_color_size = 19;
@@ -749,6 +750,98 @@ static redisReply *reconnectingRedisCommand(redisContext *c, const char *fmt, ..
     return reply;
 }
 
+
+static void loadServerConfigConnectionOptsString(char *configString) {
+    char *err = NULL;
+    int linenum = 0, totlines, i;
+    sds *lines;
+
+    lines = sdssplitlen(configString,strlen(configString),"\n",1,&totlines);
+
+    for (i = 0; i < totlines; i++) {
+        sds *argv;
+        int argc;
+
+        linenum = i+1;
+        lines[i] = sdstrim(lines[i]," \t\r\n");
+
+        /* Skip comments and blank lines */
+        if (lines[i][0] == '#' || lines[i][0] == '\0') continue;
+
+        /* Split into arguments */
+        argv = sdssplitargs(lines[i],&argc);
+        if (argv == NULL) {
+            err = "Unbalanced quotes in configuration line";
+            goto loaderr;
+        }
+
+        /* Skip this line if the resulting command vector is empty. */
+        if (argc == 0) {
+            sdsfreesplitres(argv,argc);
+            continue;
+        }
+        sdstolower(argv[0]);
+
+        // Begin parsing options
+        if (!strcasecmp(argv[0],"unixsocket") && argc == 2) {
+            sdsfree(config.hostsocket);
+            config.hostsocket = sdsnew(argv[1]);
+        } else if (!strcasecmp(argv[0],"port") && argc == 2) {
+            config.hostport = atoi(argv[1]);
+        } else if (!strcasecmp(argv[0],"bind") && argc >= 2) {
+            sdsfree(config.hostip);
+            config.hostip = sdsnew(argv[1]);
+        }
+
+        // End parsing options
+        sdsfreesplitres(argv,argc);
+    }
+    sdsfreesplitres(lines,totlines);
+    return;
+
+loaderr:
+    fprintf(stderr, "\n*** FATAL CONFIG FILE ERROR ***\n");
+    fprintf(stderr, "Reading the configuration file, at line %d\n", linenum);
+    fprintf(stderr, ">>> '%s'\n", lines[i]);
+    fprintf(stderr, "%s\n", err);
+    exit(1);
+}
+
+/* Load the destination port, socket and hostname configuration
+ * from a local server configuration file. This makes it easy to
+ * connect to a specific instance of a redis server by referencing
+ * it's configuration file. This is useful for scripts, where these
+ * settings may not be known in head of time.
+ *
+ * filename can be NULL, in such a case is considered empty. This 
+ * way loadServerConfigConnectionOpts can be used to just load a file
+ * or just load a string. */
+static void loadServerConfigConnectionOpts(char *filename) {
+    sds config = sdsempty();
+    char buf[REDIS_CONFIGLINE_MAX+1];
+
+    /* Load the file content */
+    if (filename) {
+        FILE *fp;
+
+        if (filename[0] == '-' && filename[1] == '\0') {
+            fp = stdin;
+        } else {
+            if ((fp = fopen(filename,"r")) == NULL) {
+                fprintf(stderr,
+                    "Fatal error, can't open config file '%s'", filename);
+                exit(1);
+            }
+        }
+        while(fgets(buf,REDIS_CONFIGLINE_MAX+1,fp) != NULL)
+            config = sdscat(config,buf);
+        if (fp != stdin) fclose(fp);
+    }
+
+    loadServerConfigConnectionOptsString(config);
+    sdsfree(config);
+}
+
 /*------------------------------------------------------------------------------
  * User interface
  *--------------------------------------------------------------------------- */
@@ -832,6 +925,8 @@ static int parseOptions(int argc, char **argv) {
             printf("redis-cli %s\n", version);
             sdsfree(version);
             exit(0);
+        } else if (!strcmp(argv[i], "--serverconfig") && !lastarg) {
+            loadServerConfigConnectionOpts(argv[++i]);
         } else {
             if (argv[i][0] == '-') {
                 fprintf(stderr,
@@ -904,6 +999,8 @@ static void usage(void) {
 "  --intrinsic-latency <sec> Run a test to measure intrinsic system latency.\n"
 "                     The test will run for the specified amount of seconds.\n"
 "  --eval <file>      Send an EVAL command using the Lua script at <file>.\n"
+"  --serverconfig <file> Reference a local server configuration file for\n"
+"                     connection information.\n"
 "  --help             Output this help and exit.\n"
 "  --version          Output version and exit.\n"
 "\n"
