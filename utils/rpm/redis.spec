@@ -9,7 +9,7 @@ URL:		http://redis.io/
 %else
 %define tarbasename() %(echo %name-%release )
 %endif
-%define untardirectoryname() %(tar -tzf %{SOURCE0} |head -1 |sed s#\/.*##)
+%define untardirectoryname() %(tar -tzf %{SOURCE0} |grep version.h |head -1 |sed s#\/.*##)
 Source:		%tarbasename.tar.gz
 Version:	%(tar -xzf  %{SOURCE0} %{tarbasename}/src/version.h -O | sed -n "s#.*REDIS_VERSION.*\"\(.*\)\".*#\1#p")
 
