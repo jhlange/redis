@@ -33,35 +33,37 @@ if [ "$config_name" = "" ] || [ "${config_name:0:1}" = "-" ]; then
 fi
 
 if [ "$config_type" = "redis" ]; then
-  echo "Creating /etc/redis/server.conf.d/$config_name . Please modify this"
+  echo "Creating /etc/redis/server.conf.d/${config_name}.conf . Please modify this"
   echo "file with your specific configuration."
   echo "Please ensure that the ports do not conflict with other instances"
-  if [ -e "/etc/redis/server.conf.d/$config_name" ]; then
+  if [ -e "/etc/redis/server.conf.d/${config_name}.conf" ]; then
     echo "Error. Configuration file exists." >&2
     exit 1
   fi
-  cp "/usr/share/redis/server.conf" "/etc/redis/server.conf.d/$config_name"
-  chown redis:redis "/etc/redis/server.conf.d/$config_name"
-  chmod 644 "/etc/redis/server.conf.d/$config_name" 
+  cp "/usr/share/redis/redis.conf" "/etc/redis/server.conf.d/${config_name}.conf"
+  chown redis:redis "/etc/redis/server.conf.d/${config_name}.conf"
+  chmod 644 "/etc/redis/server.conf.d/${config_name}.conf" 
   echo "Regenerating service symlinks"
   /usr/lib/systemd/system-generators/redis-service-generator.sh
   systemctl daemon-reload
-  echo "When you are ready, you can start the service by typing systemctl start redis-server"  
+  echo ""
+  echo "When you are ready, you can start the service by typing: systemctl start redis-server-instance@${config_name}"  
 elif ["$config_type" = "sentinel" ]; then
-  echo "Creating /etc/redis/sentinel.conf.d/$config_name . Please modify this"
+  echo "Creating /etc/redis/sentinel.conf.d/${config_name}.conf . Please modify this"
   echo "file with your specific configuration."
   echo "Please ensure that the ports do not conflict with other instances"
-  if [ -e "/etc/redis/sentinel.conf.d/$config_name" ]; then
+  if [ -e "/etc/redis/sentinel.conf.d/${config_name}.conf" ]; then
     echo "Error. Configuration file exists." >&2
     exit 1
   fi
-  cp "/usr/share/redis/sentinel.conf" "/etc/redis/sentinel.conf.d/$config_name"
-  chown redis:redis "/etc/redis/sentinel.conf.d/$config_name" 
-  chmod 644 "/etc/redis/sentinel.conf.d/$config_name"
+  cp "/usr/share/redis/sentinel.conf" "/etc/redis/sentinel.conf.d/${config_name}.conf"
+  chown redis:redis "/etc/redis/sentinel.conf.d/${config_name}.conf" 
+  chmod 644 "/etc/redis/sentinel.conf.d/${config_name}.conf"
   echo "Regenerating service symlinks"
   /usr/lib/systemd/system-generators/redis-service-generator.sh
   systemctl daemon-reload
-  echo "When you are ready, you can start the service by typing systemctl start redis-sentinel"  
+  echo ""
+  echo "When you are ready, you can start the service by typing: systemctl start redis-sentinel-instance@${config_name}"  
 else
   printUsage
   exit 1

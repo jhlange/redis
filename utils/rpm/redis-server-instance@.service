@@ -1,0 +1,10 @@
+[Unit]
+Description=Redis Instance %I
+After=network.target
+
+[Service]
+WorkingDirectory=/var/run/redis
+ExecStart=/usr/bin/redis-server /etc/redis/server.conf.d/%I.conf --daemonize no
+ExecStop=/usr/bin/redis-cli --serverconfig /etc/redis/server.conf.d/%I.conf shutdown
+User=redis
+Group=redis

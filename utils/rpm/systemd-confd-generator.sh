@@ -60,6 +60,7 @@ for each_want in $dest_wants/*${src_template_suffix}; do
         each_file_name_no_extension="${each_file_name%$src_template_suffix}"
         if [ "$each_file_name_no_extension" != "" ] && [ "${each_file_name:0:1}" != "." ] && ! [ -e "${conf_d_dir}/${each_file_name_no_extension}.conf" ]; then
             echo unlink "$each_want"
+            unlink "$each_want"
         fi
     fi
 done
@@ -68,7 +69,8 @@ done
 for each_new in $conf_d_dir/*.conf; do
     each_file_name="${each_new##*/}"
     each_file_name_no_extension="${each_file_name%.conf}"
-    if [ "$each_file_name_no_extension" != "" ] && [ "${each_file_name:0:1}" != "." ] && ! [ -L "$dest_wants/${each_file_name_no_extension}${src_template_suffix}" ]; then
+    if [ -e "$each_new" ] && [ "$each_file_name_no_extension" != "" ] && [ "${each_file_name:0:1}" != "." ] && ! [ -L "$dest_wants/${each_file_name_no_extension}${src_template_suffix}" ]; then
         echo ln -s "$src_template" "${dest_wants}/${src_template_base_name}@${each_file_name_no_extension}${src_template_suffix}"
+        ln -s "$src_template" "${dest_wants}/${src_template_base_name}@${each_file_name_no_extension}${src_template_suffix}"
     fi
 done
