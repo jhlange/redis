@@ -1,0 +1,70 @@
+#!/bin/sh -e
+
+if ! id -u redis >/dev/null; then
+  echo "The user redis does not exist! Please install via RPM"
+  exit 1
+fi
+
+if [ "`id -u`" != "0" ]; then
+  echo "Must run as root"
+  exit 1
+fi
+
+my_exec_name="$0"
+config_type=""
+config_name=""
+while [ "$1" != "" ]; do
+  if [ "$1" = "--type" ]; then
+    shift
+    config_type="$1"
+  else
+    config_name="$1"
+  fi
+  shift
+done
+
+printUsage() {
+  echo "USAGE: $my_exec_name  --type <sentinel|redis> NewConfigName" 1>&2
+}
+
+if [ "$config_name" = "" ] || [ "${config_name:0:1}" = "-" ]; then
+  printUsage
+  exit 1
+fi
+
+if [ "$config_type" = "redis" ]; then
+  echo "Creating /etc/redis/server.conf.d/$config_name . Please modify this"
+  echo "file with your specific configuration."
+  echo "Please ensure that the ports do not conflict with other instances"
+  if [ -e "/etc/redis/server.conf.d/$config_name" ]; then
+    echo "Error. Configuration file exists." >&2
+    exit 1
+  fi
+  cp "/usr/share/redis/server.conf" "/etc/redis/server.conf.d/$config_name"
+  chown redis:redis "/etc/redis/server.conf.d/$config_name"
+  chmod 644 "/etc/redis/server.conf.d/$config_name" 
+  echo "Regenerating service symlinks"
+  /usr/lib/systemd/system-generators/redis-service-generator.sh
+  systemctl daemon-reload
+  echo "When you are ready, you can start the service by typing systemctl start redis-server"  
+elif ["$config_type" = "sentinel" ]; then
+  echo "Creating /etc/redis/sentinel.conf.d/$config_name . Please modify this"
+  echo "file with your specific configuration."
+  echo "Please ensure that the ports do not conflict with other instances"
+  if [ -e "/etc/redis/sentinel.conf.d/$config_name" ]; then
+    echo "Error. Configuration file exists." >&2
+    exit 1
+  fi
+  cp "/usr/share/redis/sentinel.conf" "/etc/redis/sentinel.conf.d/$config_name"
+  chown redis:redis "/etc/redis/sentinel.conf.d/$config_name" 
+  chmod 644 "/etc/redis/sentinel.conf.d/$config_name"
+  echo "Regenerating service symlinks"
+  /usr/lib/systemd/system-generators/redis-service-generator.sh
+  systemctl daemon-reload
+  echo "When you are ready, you can start the service by typing systemctl start redis-sentinel"  
+else
+  printUsage
+  exit 1
+fi
+
+

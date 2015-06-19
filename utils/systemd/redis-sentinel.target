@@ -1,0 +1,6 @@
+[Unit]
+Description=Redis Sentinel
+# even if redis is an empty target we
+# can still launch sentinels.
+#
+After=redis-server.target
