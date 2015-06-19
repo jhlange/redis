@@ -1,0 +1,33 @@
+ABOUT
+===============
+1. systemd service generators decide on early startup *what* needs to be started.
+2. unit services ending in @ are special, and will be treated as instance templates by systemd
+
+The result is that we are providing a conf.d/ pattern on startup through utilizing these
+two properties. This allows us to have one standardized way of starting multiple redis
+instances on systemd systems. All you have to do is drop in configuration files for
+sentinel and server instances under /etc/redis/server.conf.d/ and /etc/redis/sentinel.conf.d/
+
+When the "redis" service is configured to started, the appropriate instances will be started.
+
+Since point 1 is on early startup, we additionally need a way to "rescan" on early startup.
+I've included redis-systemd-rescan for this purpose. Assuming my changes are all accepted by
+the redis team, you should be able to:
+
+1. Create an RPM from the official source tree with 1 rpmbuild command
+(rpmbuild -tb https://github.com/antirez/redis/archive/unstable.tar.gz )
+2. Start your services by default by dropping a few configuration files and enabling the 'redis'
+services.
+
+
+As of this writing, the REMI and EPEL packages have several bugs related to managing multiple
+instances of redis and redis-sentinel. After standardization like this, it is much more likely
+that this package will be picked up directly by redhat and redhat compatible distributions.
+
+
+Extra reading:
+1. Systemd service generators http://www.freedesktop.org/software/systemd/man/systemd.generator.html
+2. Systemd instance templates http://0pointer.de/blog/projects/instances.html
+
+
+

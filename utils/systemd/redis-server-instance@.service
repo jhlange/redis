@@ -1,0 +1,9 @@
+[Unit]
+Description=Redis Instance %I
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/redis-server /etc/redis/conf.d/%I.conf --daemonize no
+ExecStop=/usr/bin/redis-cli --serverconfig /etc/redis/conf.d/%I.conf shutdown
+User=redis
+Group=redis

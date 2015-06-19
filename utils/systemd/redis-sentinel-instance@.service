@@ -1,0 +1,9 @@
+[Unit]
+Description=Redis Sentinel %I
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/redis-sentinel /etc/redis.d/sentinel.conf.d/%I.conf --daemonize no
+ExecStop=/usr/bin/redis-cli --serverconfig /etc/redis.d/sentinel.conf.d/%I.conf
+User=redis
+Group=redis
